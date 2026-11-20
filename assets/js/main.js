@@ -9,7 +9,8 @@
   var root = document.documentElement;
   var reduceMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
   var EASE = 'power3.out';
-  var DUR = 0.7;
+  var DUR = 1;          // wolniej, żeby było widać, że elementy się pojawiają (tylko za pierwszym razem)
+  var RISE = 40;
 
   document.addEventListener('DOMContentLoaded', function () {
     var hasGsap = !!(window.gsap && window.ScrollTrigger);
@@ -73,7 +74,7 @@
       stuck = should;
       header.classList.toggle('is-stuck', stuck);
       if (stuck && hasGsap) {
-        gsap.fromTo(bar, { yPercent: -120, opacity: 0 }, { yPercent: 0, opacity: 1, duration: reduced() ? 0.3 : 0.3, ease: EASE, overwrite: true });
+        gsap.fromTo(bar, { yPercent: -120, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 0.3, ease: EASE, overwrite: true, clearProps: 'transform' }); // bez transformu menu fixed na telefonie zajmuje cały ekran
         if (reduced()) gsap.set(bar, { yPercent: 0 });
       } else if (hasGsap) {
         gsap.set(bar, { clearProps: 'transform' });
@@ -156,8 +157,8 @@
       start: 'top 85%',
       once: true,
       onEnter: function (els) {
-        gsap.fromTo(els, still ? { opacity: 0 } : { opacity: 0, y: 24 },
-          { opacity: 1, y: 0, duration: still ? 0.3 : DUR, ease: EASE, stagger: still ? 0 : 0.08, overwrite: true });
+        gsap.fromTo(els, still ? { opacity: 0 } : { opacity: 0, y: RISE },
+          { opacity: 1, y: 0, duration: still ? 0.3 : DUR, ease: EASE, stagger: still ? 0 : 0.12, overwrite: true });
       }
     });
   }
@@ -165,10 +166,10 @@
   /* 8 + karty: każda grupa kart wjeżdża po kolei */
   function cardGroups(still) {
     var groups = [
-      { sel: '.points [data-anim="card"]', stagger: 0.1 },
-      { sel: '.skills__grid [data-anim="card"]', stagger: 0.06, icon: '.skill__icon' },
-      { sel: '.process__track [data-anim="card"]', stagger: 0.08, x: true },
-      { sel: '.steps [data-anim="card"]', stagger: 0.08 }
+      { sel: '.points [data-anim="card"]', stagger: 0.15 },
+      { sel: '.skills__grid [data-anim="card"]', stagger: 0.1, icon: '.skill__icon' },
+      { sel: '.process__track [data-anim="card"]', stagger: 0.12, x: true },
+      { sel: '.steps [data-anim="card"]', stagger: 0.12 }
     ];
     groups.forEach(function (g) {
       var els = gsap.utils.toArray(g.sel);
@@ -177,12 +178,12 @@
         ScrollTrigger.create({ trigger: els[0], start: 'top 85%', once: true, onEnter: function () { gsap.to(els, { opacity: 1, duration: 0.3 }); } });
         return;
       }
-      var tl = gsap.timeline({ scrollTrigger: { trigger: els[0], start: 'top 85%', once: true } });
-      tl.fromTo(els, g.x ? { opacity: 0, x: 60 } : { opacity: 0, y: 24 },
+      var tl = gsap.timeline({ scrollTrigger: { trigger: els[0], start: 'top 88%', once: true } });
+      tl.fromTo(els, g.x ? { opacity: 0, x: 80 } : { opacity: 0, y: RISE },
         { opacity: 1, x: 0, y: 0, duration: DUR, ease: EASE, stagger: g.stagger, clearProps: 'transform' });
       if (g.icon) {
         tl.fromTo(els.map(function (e) { return e.querySelector(g.icon); }).filter(Boolean),
-          { scale: 0.6, rotate: -12 }, { scale: 1, rotate: 0, duration: 0.6, ease: 'back.out(2)', stagger: g.stagger }, 0.15);
+          { scale: 0.6, rotate: -12 }, { scale: 1, rotate: 0, duration: 0.8, ease: 'back.out(2)', stagger: g.stagger }, 0.3);
       }
     });
   }
@@ -245,11 +246,19 @@
     var cols = gsap.utils.toArray('.match__col');
     if (!cols.length) return;
     if (still) return;
-    gsap.fromTo(cols, { opacity: 0, y: 24 }, {
+    gsap.fromTo(cols, { opacity: 0, y: RISE }, {
       opacity: function (i, el) { return el.style.opacity || 1; }, y: 0, duration: DUR, ease: EASE, stagger: 0.12,
       clearProps: 'transform,opacity',
       scrollTrigger: { trigger: '.match__cols', start: 'top 85%', once: true }
     });
+    // zdjęcie lekko się oddala, a pas środkowy rozszerza w trakcie przewijania
+    var photo = document.querySelector('.match__photo');
+    if (photo) {
+      gsap.fromTo('.match__img', { scale: 1.12 }, { scale: 1, ease: 'none',
+        scrollTrigger: { trigger: photo, start: 'top bottom', end: 'center center', scrub: true } });
+      gsap.fromTo(photo, { '--narrow': '100px' }, { '--narrow': '0px', ease: 'none',
+        scrollTrigger: { trigger: photo, start: 'top bottom', end: 'center center', scrub: true } });
+    }
     gsap.fromTo('.match__side', { opacity: 0 }, {
       opacity: 1, duration: 0.6, stagger: 0.1,
       scrollTrigger: { trigger: '.match__photo', start: 'top 75%', once: true }
@@ -271,7 +280,7 @@
       });
     }
     var tl = gsap.timeline({ scrollTrigger: { trigger: '.questions', start: 'top 90%', once: true } });
-    tl.fromTo(qs, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: DUR, ease: EASE, stagger: 0.12 })
+    tl.fromTo(qs, { opacity: 0, y: RISE }, { opacity: 1, y: 0, duration: DUR, ease: EASE, stagger: 0.15 })
       .fromTo(qs.map(function (q) { return q.querySelector('.question__no'); }), { scale: 0.6 },
         { scale: 1, duration: 0.5, ease: 'back.out(3)', stagger: 0.12 }, 0.2);
   }
@@ -286,20 +295,24 @@
     });
   }
 
-  /* 12. Stopka – obrys logo rysuje się kreska po kresce */
+  /* 12. Stopka – logo widoczne od razu; po obrysie krąży subtelna limonkowa poświata (CSS) */
   function footer(still) {
     var mark = document.querySelector('.footer__mark');
-    if (!mark) return;
-    var strokes = mark.querySelectorAll('.footer__stroke');
-    if (still) return;
-    strokes.forEach(function (p) { p.setAttribute('pathLength', '1'); });
-    gsap.set(strokes, { strokeDasharray: 1, strokeDashoffset: 1 });
-    gsap.to(strokes, {
-      strokeDashoffset: 0, duration: 1.6, ease: 'power2.inOut', stagger: 0.06,
-      scrollTrigger: { trigger: mark, start: 'top 90%', once: true }
+    if (!mark || mark.querySelector('.footer__glow')) return;
+    var ns = 'http://www.w3.org/2000/svg';
+    var g = document.createElementNS(ns, 'g');
+    g.setAttribute('class', 'footer__glow');
+    mark.querySelectorAll('.footer__stroke').forEach(function (p, i) {
+      var c = document.createElementNS(ns, 'path');
+      c.setAttribute('d', p.getAttribute('d'));
+      c.setAttribute('pathLength', '1');
+      c.style.setProperty('--i', String(i));
+      g.appendChild(c);
     });
+    mark.appendChild(g);
+    if (still) return;
     gsap.fromTo('.footer__top, .footer__bottom', { opacity: 0, y: 16 }, {
-      opacity: 1, y: 0, duration: DUR, ease: EASE, stagger: 0.1,
+      opacity: 1, y: 0, duration: DUR, ease: EASE, stagger: 0.12,
       scrollTrigger: { trigger: '.footer', start: 'top 90%', once: true }
     });
   }
@@ -386,7 +399,8 @@
     function render() {
       var pos = state.pos;
       var w = photo.clientWidth;
-      var full = w / 2 + 340;                       // tyle trzeba, żeby zasłona zniknęła całkiem
+      var t = (parseFloat(getComputedStyle(photo).height) || 500) * 0.839;
+      var full = w / 2 + 120 + t / 2 + 160;           // tyle trzeba, żeby zasłona zniknęła całkiem (z zapasem na animację pasa)
       var toBiz = clamp((50 - pos) / 50, 0, 1);     // 0..1
       var toSport = clamp((pos - 50) / 50, 0, 1);
       match.style.setProperty('--open-l', (toBiz * full).toFixed(1) + 'px');
@@ -568,8 +582,10 @@
     function goTo(i) {
       i = clamp(i, 0, n - 1);
       if (pinST) {
+        // ten sam przelicznik co w onUpdate: etap i ⇔ postęp i / (n - 1)
         var y = pinST.start + (i / (n - 1)) * (pinST.end - pinST.start);
-        window.scrollTo({ top: Math.round(y) + 1, behavior: reduced() ? 'auto' : 'smooth' });
+        setActive(i);
+        window.scrollTo({ top: Math.round(y), behavior: reduced() ? 'auto' : 'smooth' });
       } else {
         viewport.scrollTo({ left: stages[i].offsetLeft - stages[0].offsetLeft, behavior: reduced() ? 'auto' : 'smooth' });
         setActive(i);
@@ -606,11 +622,8 @@
           invalidateOnRefresh: true,
           anticipatePin: 1,
           onUpdate: function (self) {
-            // karta, która dochodzi do lewej krawędzi, staje się aktywna
-            var x = distance() * self.progress;
-            var st = step() || 1;
-            var i = self.progress > 0.985 ? n - 1 : Math.round(x / st);
-            setActive(i);
+            // etap aktywny = postęp przewijania podzielony na 5 równych części
+            setActive(Math.round(self.progress * (n - 1)));
           }
         }
       });
