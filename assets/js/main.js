@@ -35,6 +35,42 @@
   function reduced() { return reduceMQ.matches; }
   function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
 
+  /* Płynne przewijanie strony (GSAP zamiast CSS scroll-behavior, który gryzie się z przypinaniem sekcji).
+     Przerywa je kółko myszy, dotyk lub klawisz. */
+  var scrollTween = null;
+  function smoothScrollTo(y, dur, onDone, ease) {
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    y = clamp(Math.round(y), 0, max);
+    if (scrollTween) scrollTween.kill();
+    if (!window.gsap || reduced() || Math.abs(y - window.scrollY) < 2) {
+      window.scrollTo(0, y);
+      if (onDone) onDone();
+      return;
+    }
+    var o = { y: window.scrollY };
+    var d = dur || clamp(Math.abs(y - o.y) / 2200, 0.6, 1.4);
+    scrollTween = gsap.to(o, {
+      y: y, duration: d, ease: ease || 'power2.inOut',
+      onUpdate: function () { window.scrollTo(0, o.y); },
+      onComplete: function () { scrollTween = null; if (onDone) onDone(); },
+      onInterrupt: function () { scrollTween = null; if (onDone) onDone(); }
+    });
+  }
+  ['wheel', 'touchstart', 'keydown'].forEach(function (ev) {
+    window.addEventListener(ev, function () { if (scrollTween) scrollTween.kill(); }, { passive: true });
+  });
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented) return;
+    var id = a.getAttribute('href');
+    if (id.length < 2) return;
+    var el = document.querySelector(id);
+    if (!el) return;
+    e.preventDefault();
+    smoothScrollTo(el.getBoundingClientRect().top + window.scrollY);
+    if (history.replaceState) history.replaceState(null, '', id);
+  });
+
   /* =========================================================
      MENU MOBILNE (poniżej 1024 px)
      ========================================================= */
@@ -390,22 +426,30 @@
     var switches = match.querySelectorAll('[data-switch]');
     var labelDefault = label ? label.innerHTML : '';
     var state = { pos: 50 };
+    var target = 50;          // dokąd zmierza uchwyt podczas przeciągania (uchwyt dogania go płynnie)
     var currentLabel = 'both';
+    var veilL = match.querySelector('.match__veil--left');
+    var veilR = match.querySelector('.match__veil--right');
+    var geo = { full: 0, max: 0 };
+    // kolumny zmieniają przezroczystość co klatkę – bez przejścia CSS, które by je opóźniało
+    [colBiz, colSport].forEach(function (c) { c.style.transition = 'none'; });
 
-    function maxX() {
-      return Math.max(0, (box.clientWidth - handle.offsetWidth) / 2 - 8);
+    function measure() {
+      var w = photo.clientWidth;
+      var t = photo.clientHeight * 0.839;
+      geo.full = w / 2 + 120 + t / 2 + 160;   // tyle trzeba, żeby zasłona zniknęła całkiem
+      geo.max = Math.max(0, (box.clientWidth - handle.offsetWidth) / 2 - 8);
     }
+    function maxX() { return geo.max; }
 
     function render() {
       var pos = state.pos;
-      var w = photo.clientWidth;
-      var t = (parseFloat(getComputedStyle(photo).height) || 500) * 0.839;
-      var full = w / 2 + 120 + t / 2 + 160;           // tyle trzeba, żeby zasłona zniknęła całkiem (z zapasem na animację pasa)
       var toBiz = clamp((50 - pos) / 50, 0, 1);     // 0..1
       var toSport = clamp((pos - 50) / 50, 0, 1);
-      match.style.setProperty('--open-l', (toBiz * full).toFixed(1) + 'px');
-      match.style.setProperty('--open-r', (toSport * full).toFixed(1) + 'px');
-      handle.style.setProperty('--x', (((pos - 50) / 50) * maxX()).toFixed(1) + 'px');
+      // zasłony i uchwyt przesuwamy transformem – to liczy karta graficzna, więc jest płynnie
+      if (veilL) veilL.style.transform = 'translate3d(' + (-toBiz * geo.full).toFixed(1) + 'px,0,0)';
+      if (veilR) veilR.style.transform = 'translate3d(' + (toSport * geo.full).toFixed(1) + 'px,0,0)';
+      handle.style.transform = 'translate3d(calc(-50% + ' + (((pos - 50) / 50) * geo.max).toFixed(1) + 'px),0,0)';
       colSport.style.opacity = (1 - 0.55 * toBiz).toFixed(3);
       colBiz.style.opacity = (1 - 0.55 * toSport).toFixed(3);
       if (ends[0]) ends[0].style.opacity = (1 - toBiz).toFixed(3);
@@ -417,34 +461,50 @@
         if (label) {
           if (key === 'both') label.innerHTML = labelDefault;
           else label.textContent = key === 'biz' ? 'Dla firm' : 'Dla sportu';
-          if (hasGsap && !reduced()) gsap.fromTo(label, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.25, ease: EASE });
+          if (hasGsap && !reduced()) gsap.fromTo(label, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.3, ease: EASE });
         }
         match.classList.toggle('is-biz', key === 'biz');
         match.classList.toggle('is-sport', key === 'sport');
+        handle.setAttribute('aria-valuetext', key === 'biz' ? 'Dla firm' : key === 'sport' ? 'Dla sportu' : 'Obie strony');
+        switches.forEach(function (b) {
+          var v = +b.getAttribute('data-switch');
+          b.setAttribute('aria-pressed', String((v === 0 && key === 'biz') || (v === 100 && key === 'sport')));
+        });
       }
       handle.setAttribute('aria-valuenow', String(Math.round(pos)));
-      handle.setAttribute('aria-valuetext', key === 'biz' ? 'Dla firm' : key === 'sport' ? 'Dla sportu' : 'Obie strony');
-      switches.forEach(function (b) {
-        var v = +b.getAttribute('data-switch');
-        b.setAttribute('aria-pressed', String((v === 0 && pos <= 25) || (v === 100 && pos >= 75)));
-      });
     }
 
-    function goTo(target, dur) {
-      target = clamp(target, 0, 100);
+    // podążanie za palcem/myszą z lekką bezwładnością
+    var follow = 0;
+    function followLoop() {
+      var d = target - state.pos;
+      if (Math.abs(d) < 0.05) { state.pos = target; render(); follow = 0; return; }
+      state.pos += d * 0.25;
+      render();
+      follow = requestAnimationFrame(followLoop);
+    }
+    function chase() {
+      if (reduced()) { state.pos = target; render(); return; }
+      if (!follow) follow = requestAnimationFrame(followLoop);
+    }
+
+    function goTo(to, dur) {
+      to = clamp(to, 0, 100);
+      target = to;
+      cancelAnimationFrame(follow); follow = 0;
       if (hasGsap && dur > 0 && !reduced()) {
-        gsap.to(state, { pos: target, duration: dur, ease: EASE, overwrite: true, onUpdate: render });
+        gsap.to(state, { pos: to, duration: dur, ease: 'power3.out', overwrite: true, onUpdate: render });
       } else {
         if (hasGsap) gsap.killTweensOf(state);
-        state.pos = target;
+        state.pos = to;
         render();
       }
     }
     function snap() {
-      var p = state.pos;
+      var p = target;
       var t = p < 25 ? 0 : p > 75 ? 100 : 50;
       if (reduced()) return;   // przy „mniej ruchu” bez docierania do punktów
-      goTo(t, 0.4);
+      goTo(t, 0.7);
     }
 
     // Przeciąganie: mysz i palec (Pointer Events)
@@ -454,6 +514,7 @@
       dragging = true;
       startX = e.clientX;
       startPos = state.pos;
+      target = state.pos;
       if (hasGsap) gsap.killTweensOf(state);
       box.classList.add('is-dragging');
       handle.setPointerCapture && handle.setPointerCapture(e.pointerId);
@@ -462,13 +523,15 @@
     function onMove(e) {
       if (!dragging) return;
       var mx = maxX() || 1;
-      state.pos = clamp(startPos + ((e.clientX - startX) / mx) * 50, 0, 100);
-      render();
+      target = clamp(startPos + ((e.clientX - startX) / mx) * 50, 0, 100);
+      chase();
     }
     function onUp() {
       if (!dragging) return;
       dragging = false;
       box.classList.remove('is-dragging');
+      cancelAnimationFrame(follow); follow = 0;
+      state.pos = target;   // snap startuje z miejsca, w którym jest palec
       snap();
     }
     handle.addEventListener('pointerdown', onDown);
@@ -481,7 +544,7 @@
     box.addEventListener('click', function (e) {
       var end = e.target.closest('.winwin__end');
       if (!end) return;
-      goTo(end.classList.contains('winwin__end--left') ? (state.pos === 0 ? 50 : 0) : (state.pos === 100 ? 50 : 100), 0.5);
+      goTo(end.classList.contains('winwin__end--left') ? (state.pos === 0 ? 50 : 0) : (state.pos === 100 ? 50 : 100), 0.8);
     });
 
     // Klawiatura
@@ -498,7 +561,7 @@
       }
       if (t === null) return;
       e.preventDefault();
-      goTo(t, 0.25);
+      goTo(t, 0.35);
     });
 
     // Przełączniki na telefonie
@@ -506,11 +569,13 @@
       b.addEventListener('click', function () {
         var v = +b.getAttribute('data-switch');
         var on = b.getAttribute('aria-pressed') === 'true';
-        goTo(on ? 50 : v, 0.6);
+        goTo(on ? 50 : v, 0.8);
       });
     });
 
-    window.addEventListener('resize', render);
+    window.addEventListener('resize', function () { measure(); render(); });
+    if (window.ResizeObserver) new ResizeObserver(function () { measure(); render(); }).observe(photo);
+    measure();
     render();
 
     // Jednorazowe kiwnięcie uchwytem ±20 px, gdy sekcja pierwszy raz wejdzie w kadr
@@ -545,6 +610,7 @@
     var n = stages.length;
     var active = 0;
     var pinST = null;   // ScrollTrigger, gdy sekcja jest przyklejona
+    var navLock = false; // podczas przewijania strzałkami nie przełączamy etapów pośrednich
 
     function setActive(i) {
       i = clamp(i, 0, n - 1);
@@ -585,7 +651,8 @@
         // ten sam przelicznik co w onUpdate: etap i ⇔ postęp i / (n - 1)
         var y = pinST.start + (i / (n - 1)) * (pinST.end - pinST.start);
         setActive(i);
-        window.scrollTo({ top: Math.round(y), behavior: reduced() ? 'auto' : 'smooth' });
+        navLock = true;
+        smoothScrollTo(y, 0.8, function () { navLock = false; }, 'power2.out');   // scrub osi dodaje miękki start
       } else {
         viewport.scrollTo({ left: stages[i].offsetLeft - stages[0].offsetLeft, behavior: reduced() ? 'auto' : 'smooth' });
         setActive(i);
@@ -623,7 +690,7 @@
           anticipatePin: 1,
           onUpdate: function (self) {
             // etap aktywny = postęp przewijania podzielony na 5 równych części
-            setActive(Math.round(self.progress * (n - 1)));
+            if (!navLock) setActive(Math.round(self.progress * (n - 1)));
           }
         }
       });
