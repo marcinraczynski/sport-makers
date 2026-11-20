@@ -296,7 +296,7 @@ h1, h2, h3 { margin: 0; }
 .trust {
   position: relative; z-index: 2;
   display: flex; align-items: center; gap: 40px;
-  padding: 26px 36px;
+  padding: 28px 36px 4px;
   background: #FFFFFF;
   color: #5B6382;
 }
@@ -315,7 +315,7 @@ h1, h2, h3 { margin: 0; }
 }
 .trust__logo { width: auto; max-width: 100%; transition: color .3s var(--ease), transform .3s var(--ease); }
 .trust__item:hover .trust__logo { color: var(--ink); transform: translateY(-2px); }
-.trust__logo--orlen { height: 22px; }
+.trust__logo--orlen { height: 36px; }
 .trust__logo--pge { height: 32px; }
 .trust__logo--decathlon { height: 21px; }
 .trust__logo--superbet { height: 22px; }
