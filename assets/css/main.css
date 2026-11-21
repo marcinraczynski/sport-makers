@@ -881,6 +881,7 @@ h1, h2, h3 { margin: 0; }
   .split__half--right picture { transform: translateY(calc(var(--sep) * .4)); }
   .split__half picture { left: 0 !important; right: 0 !important; width: 100% !important; }
   .split__half--left picture { top: 0; height: 60%; }
+  .split__half--left .split__img { object-position: 45% 12%; }  /* na telefonie w kadrze są obaj biznesmeni */
   .split__half--right picture { top: auto; bottom: 0; height: 60%; }
   .split__half--left .chip { left: 16px; top: 16px; bottom: auto; }
   .split__half--right .chip { right: 16px; bottom: 16px; }
