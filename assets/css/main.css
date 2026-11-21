@@ -287,7 +287,9 @@ h1, h2, h3 { margin: 0; }
 }
 .tile__icon svg, .skill__icon--arrow svg { fill: none; stroke: #FFFFFF; stroke-width: 2; stroke-linecap: round; transition: transform .25s var(--ease); }
 .tile:hover .tile__icon svg { transform: translate(2px, -2px); }
-.tile__text { font-family: var(--font-head); font-size: 22px; font-weight: 500; letter-spacing: -.02em; line-height: 1.2; }
+.tile { container-type: inline-size; }
+/* wszystkie trzy teksty w jednej linii: rozmiar liczony od szerokości kafelka (najdłuższy tekst ≈ 18,6 × rozmiar fontu; cqi = szerokość treści kafelka) */
+.tile__text { font-family: var(--font-head); font-size: clamp(17px, calc(100cqi / 18.8), 22px); font-weight: 500; letter-spacing: -.02em; line-height: 1.2; }
 .tile--accent { background: var(--accent); color: var(--ink); }
 .tile--accent .tile__top .k { color: var(--ink); }
 .tile--accent .tile__icon { background: var(--ink); }
