@@ -43,7 +43,7 @@
 :root {
   --ink: #0B1026;
   --ink-2: #111839;
-  --accent: #CCF54A;
+  --accent: #25E3C8;
   --bg: #FFFFFF;
   --bg-soft: #F1F3F7;
   --text-2: #4A5270;
@@ -725,16 +725,16 @@ h1, h2, h3 { margin: 0; }
 .footer__nav a:hover { color: #FFFFFF; }
 .footer__mark { width: 100%; max-width: 1080px; height: auto; margin: 0 auto; overflow: visible; }
 .footer__stroke { fill: none; stroke: rgba(255, 255, 255, .09); stroke-width: 1.7; }
-.footer__stroke--accent { stroke: rgba(204, 245, 74, .28); }
+.footer__stroke--accent { stroke: rgba(37, 227, 200, .28); }
 /* Poświata: krótki odcinek limonki krąży po obrysie (kopie ścieżek dodaje main.js) */
 .footer__glow path {
   fill: none;
-  stroke: rgba(204, 245, 74, .55);
+  stroke: rgba(37, 227, 200, .55);
   stroke-width: 2.2;
   stroke-linecap: round;
   stroke-dasharray: .06 .94;
   stroke-dashoffset: 1;
-  filter: drop-shadow(0 0 6px rgba(204, 245, 74, .55));
+  filter: drop-shadow(0 0 6px rgba(37, 227, 200, .55));
   animation: footer-glow 9s linear infinite;
   animation-delay: calc(var(--i, 0) * -.75s);
 }
